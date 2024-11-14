@@ -3,7 +3,7 @@ name: Build and Push Docker Image with Incremental Tagging and Version Bump
 on:
   workflow_dispatch:  # This allows manual triggering of the workflow
 
-  
+
 # on:
 #   push:
 #     branches:
@@ -73,34 +73,34 @@ jobs:
           echo "New tag: $NEW_TAG"
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-      # Step 7: Log in to DockerHub
-      - name: Log in to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # # Step 7: Log in to DockerHub
+      # - name: Log in to DockerHub
+      #   uses: docker/login-action@v2
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Step 8: Build and tag the Docker image for DockerHub
-      - name: Build and tag Docker image
-        run: |
-          docker build --build-arg API_BASE_URL=${{ secrets.API_BASE_URL }} -t ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }} .
-          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }} ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:latest
+      # # Step 8: Build and tag the Docker image for DockerHub
+      # - name: Build and tag Docker image
+      #   run: |
+      #     docker build --build-arg API_BASE_URL=${{ secrets.API_BASE_URL }} -t ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }} .
+      #     docker tag ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }} ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:latest
 
-      # Step 9: Push Docker images to DockerHub
-      - name: Push Docker image
-        run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:latest
+      # # Step 9: Push Docker images to DockerHub
+      # - name: Push Docker image
+      #   run: |
+      #     docker push ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }}
+      #     docker push ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:latest
 
-      # Step 10: Set up Git credentials
-      - name: Set up Git credentials
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+      # # Step 10: Set up Git credentials
+      # - name: Set up Git credentials
+      #   run: |
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      #     git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
-      # Step 11: Create and push a new Git tag
-      - name: Create new Git tag
-        run: |
-          git tag ${{ env.NEW_TAG }}
-          git push origin ${{ env.NEW_TAG }}
+      # # Step 11: Create and push a new Git tag
+      # - name: Create new Git tag
+      #   run: |
+      #     git tag ${{ env.NEW_TAG }}
+      #     git push origin ${{ env.NEW_TAG }}
