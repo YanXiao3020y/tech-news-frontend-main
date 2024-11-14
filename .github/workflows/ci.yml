@@ -1,0 +1,106 @@
+name: Build and Push Docker Image with Incremental Tagging and Version Bump
+
+on:
+  workflow_dispatch:  # This allows manual triggering of the workflow
+
+  
+# on:
+#   push:
+#     branches:
+#       - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          tags: true
+
+      # Step 2: Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      # Step 3: Login to Amazon ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # Step 4: Build, tag, and push the Docker image to Amazon ECR
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: technews/frontend
+          IMAGE_TAG: latest
+        run: |
+          docker build --build-arg API_BASE_URL=${{ secrets.API_BASE_URL }} -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # Step 5: Retrieve the latest Git tag by sorting
+      - name: Get the latest Git tag
+        id: get_tag
+        run: |
+          TAG=$(git tag --sort=-v:refname | head -n 1)
+          echo "Latest tag: $TAG"
+          echo "CURRENT_TAG=$TAG" >> $GITHUB_ENV
+
+      # Step 6: Calculate new tag with version bump
+      - name: Calculate new tag with version bump
+        id: calc_new_tag
+        run: |
+          CURRENT_TAG=${{ env.CURRENT_TAG }}
+          VERSION=$(echo $CURRENT_TAG | sed 's/v//g')
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+
+          if [ $MINOR -lt 9 ]; then
+            NEW_MINOR=$((MINOR+1))
+            NEW_TAG="v$MAJOR.$NEW_MINOR"
+          else
+            NEW_MAJOR=$((MAJOR+1))
+            NEW_MINOR=0
+            NEW_TAG="v$NEW_MAJOR.$NEW_MINOR"
+          fi
+
+          echo "New tag: $NEW_TAG"
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+
+      # Step 7: Log in to DockerHub
+      - name: Log in to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Step 8: Build and tag the Docker image for DockerHub
+      - name: Build and tag Docker image
+        run: |
+          docker build --build-arg API_BASE_URL=${{ secrets.API_BASE_URL }} -t ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }} .
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }} ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:latest
+
+      # Step 9: Push Docker images to DockerHub
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:${{ env.NEW_TAG }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/technews-frontend:latest
+
+      # Step 10: Set up Git credentials
+      - name: Set up Git credentials
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+      # Step 11: Create and push a new Git tag
+      - name: Create new Git tag
+        run: |
+          git tag ${{ env.NEW_TAG }}
+          git push origin ${{ env.NEW_TAG }}

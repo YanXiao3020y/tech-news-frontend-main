@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  height: 100vh;
+}
+.show {
+  transform: none !important;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* 隐藏 Chrome, Safari 和 Edge 中的滚动条 */
+}
